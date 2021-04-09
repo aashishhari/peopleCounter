@@ -10,6 +10,7 @@ int timeBetweenBothTrigger = 500;
 volatile int counter = 0;
 
 void setup() {
+  Serial.begin(115200);
   // put your setup code here, to run once:
   //1. setup load sensor
   //2. setup tof sensor
@@ -23,10 +24,10 @@ void flip() {
     counter = 0;
   }
   if(3000 < counter && counter < 3500) {
-    loadtime = counter;
+    loadtime = millis();
   }
   else if(4000 < counter && counter < 4500) {
-    toftime = counter;
+    toftime = millis();
   }
 }
 
@@ -63,9 +64,13 @@ void loop() {
       toftime = 0;
     }
     else {
-      lastactive = 0;
-      loadtime = 0;
-      toftime = 0;
+      lastactive = bothactive;
+      if(toftime > loadtime) {
+        loadtime = 0;
+      }
+      else {
+        toftime = 0;
+      }
     }
   }
 }
