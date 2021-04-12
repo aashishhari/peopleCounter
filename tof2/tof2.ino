@@ -22,7 +22,7 @@ int zone = 0;
 #define DISTANCES_ARRAY_SIZE                         10   // nb of samples
 #define MAX_DISTANCE                                 2400 // mm, 2000
 #define MIN_DISTANCE                                 0   // mm
-#define DIST_THRESHOLD                               850  // mm, 1600
+#define DIST_THRESHOLD                               1800  // mm, 1600
 #define ROWS_OF_SPADS                                8 // 8x16 SPADs ROI
 #define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target, ignor eusing 50
 #define DISTANCE_MODE                                DISTANCE_MODE_LONG
@@ -33,7 +33,7 @@ SFEVL53L1X sensor(Wire);
 int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatus);
 int oldCount = 0;
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(1200);
   Wire.begin();
   Wire.setClock(400000); // use 400 kHz I2C
 
@@ -54,9 +54,12 @@ void setup() {
   sensor.setIntermeasurementPeriod(34); // time between measurements. (Delay between Ranging operations)
   sensor.setROI(4,4,center[zone]);
 
+  sensor.clearInterrupt();
+
   // sensor zone calibration -- ok this is how we get the zonedata, to implement later (add next line there as well)
   sensor.startRanging();
   Serial.println("Starting...");
+  sensor.clearInterrupt();
 }
 
 // use millis() instead of delay()https://dzone.com/articles/arduino-using-millis-instead-of-delay
@@ -85,7 +88,6 @@ void loop() {
     zone = zone + 1;
     zone = zone % 2;
     sensor.setROI(4,4, center[zone]);
-    
   }
 }
 
