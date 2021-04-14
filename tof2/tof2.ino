@@ -1,12 +1,6 @@
 #include <Wire.h>
 #include <SparkFun_VL53L1X.h>
 
-#define SHUTDOWN_PIN 2 //idk
-#define INTERRUPT_PIN 3 //idk
-
-
-const int threshold_percentage = 80;
-
 char peopleCounterArray[50];
 
 static const int NOBODY = 0;
@@ -18,25 +12,28 @@ static int center[2] = {167, 231}; // andrea's suggested value also try
 int zone = 0;
 
 // Specific to our Profile
-#define PROFILE_STRING                               "DOOR_JAM_2400"
+// #define PROFILE_STRING                               "DOOR_JAM_2400"
 #define DISTANCES_ARRAY_SIZE                         10   // nb of samples
-#define MAX_DISTANCE                                 2400 // mm, 2000
-#define MIN_DISTANCE                                 0   // mm
-#define DIST_THRESHOLD                               1800  // mm, 1600
-#define ROWS_OF_SPADS                                8 // 8x16 SPADs ROI
+// #define MAX_DISTANCE                                 2000 // mm, 2000
+// #define MIN_DISTANCE                                 0   // mm
+#define DIST_THRESHOLD                               1600  // mm, 1600
+// #define ROWS_OF_SPADS                                8 // 8x16 SPADs ROI
 #define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target, ignor eusing 50
-#define DISTANCE_MODE                                DISTANCE_MODE_LONG
-
+#define ROI_WIDTH                                    4
+#define ROI_HEIGHT                                   4
+/* Notes
+Supported Timing Budgets: ULD, [20 33 50 100]. (found following somewhere, don't think 15 is allowed: [15, 20, 33, 50, 100, 200, 500])
+Minimimum timing budget is 20ms for short distance mode and 33ms for medium & long distance modes
+*/
+// supported [20 33 50 100] [15, 20, 33, 50, 100, 200, 500] , don't think 15 is actually allowed, 66 Hz max ranging, 33 ms min for our application
 SFEVL53L1X sensor(Wire);
 
 //void zonesCalibration();
 int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatus);
-int oldCount = 0;
 void setup() {
-  Serial.begin(1200);
+  Serial.begin(115200);
   Wire.begin();
   Wire.setClock(400000); // use 400 kHz I2C
-
   // Failure Mode 1
   if (sensor.begin()) // init() is deprecated version
   {
@@ -45,51 +42,44 @@ void setup() {
   }
   Serial.println("Success connecting to sensor");
   
-  // Minimum timing budget is 20ms for short distance mode and 33ms for medium & long distance modes ==> Check datasheet for more details.
-  sensor.setDistanceModeLong(); // discrete set of supported measurement frequencies for ULD [20 33 50 100] [15, 20, 33, 50, 100, 200, 500] , don't think 15 is actually allowed, 66 Hz max ranging, 33 ms min for our application
-  sensor.setTimingBudgetInMs(33); // timing budget for measurement
-
-  // Start continuous readings at a rate of one measurement every 50 ms (the inter-measurement period). 
-  // This period should be at least as long as the timing budget.
-  sensor.setIntermeasurementPeriod(34); // time between measurements. (Delay between Ranging operations)
-  sensor.setROI(4,4,center[zone]);
-
+  sensor.setDistanceModeLong(); // modify this mode.
+  sensor.setTimingBudgetInMs(TIMING_BUDGET); // [20 33 50 100], [15, 20, 33, 50, 100, 200, 500]
+  sensor.setIntermeasurementPeriod(TIMING_BUDGET+1); // This period should be at least as long as the timing budget -- (additional time is time time between measurements)
+  sensor.setROI(ROI_WIDTH,ROI_HEIGHT,center[zone]);
   sensor.clearInterrupt();
-
-  // sensor zone calibration -- ok this is how we get the zonedata, to implement later (add next line there as well)
   sensor.startRanging();
   Serial.println("Starting...");
   sensor.clearInterrupt();
 }
 
-// use millis() instead of delay()https://dzone.com/articles/arduino-using-millis-instead-of-delay
-
 void loop() {
-  // put your main code here, to run repeatedly:
   if(sensor.checkForDataReady()) {
-    //sensor.setDistanceThreshold(100,300,3); 
-    //setDist(dev,100,300,0,1): below 100 ||| setDist(dev,100,300,1,1): above 300 ||| setDist(dev,100,300,2,1): out-of-window ||| setDist(dev,100,300,3,1): in window
     uint16_t rangeStatus = sensor.getRangeStatus();
     int16_t distance = sensor.getDistance(); //uint.
     sensor.clearInterrupt();
-//    Serial.print("Center ");
-//    Serial.print(center[zone]);
-//    Serial.print(" Distance: ");
-//    Serial.println(distance);
-    int count = ProcessPeopleCountingData(distance,zone,rangeStatus);
-    if(!count) {
-      Serial.print(count);
-    } else {
-      Serial.println();
-      Serial.print("Count: ");
-      Serial.println(count);
-      oldCount = count;
-    }
+    Serial.print("Center ");
+    Serial.print(center[zone]);
+    Serial.print(" Distance: ");
+    Serial.println(distance);
+    //int count = ProcessPeopleCountingData(distance,zone,rangeStatus);
+//    if(!count) {
+////      Serial.print(count);
+//    } else {
+//      // Serial.println();
+//      // Serial.print("Count: ");
+//      // Serial.println(count);
+//    }
     zone = zone + 1;
     zone = zone % 2;
-    sensor.setROI(4,4, center[zone]);
+    sensor.setROI(ROI_WIDTH,ROI_HEIGHT, center[zone]);
   }
 }
+
+/* Addtional Functionality
+  // Pretty Neat -- can measure within a certain threshold.
+  //sensor.setDistanceThreshold(100,300,3); 
+  //setDist(dev,100,300,0,1): below 100 ||| setDist(dev,100,300,1,1): above 300 ||| setDist(dev,100,300,2,1): out-of-window ||| setDist(dev,100,300,3,1): in window
+*/
 
 int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatus) {
   static int PathTrack[] = {0,0,0,0};
