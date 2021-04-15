@@ -6,6 +6,7 @@
 #define LEFT                      0
 #define RIGHT                     1
 
+#define DISTANCES_ARRAY_SIZE                         10   // nb of samples
 #define DIST_THRESHOLD                               1600  // mm
 #define ROWS_OF_SPADS                                4 // 8x16 SPADs ROI
 #define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target
