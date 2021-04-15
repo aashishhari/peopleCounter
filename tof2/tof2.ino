@@ -6,14 +6,9 @@
 #define LEFT                      0
 #define RIGHT                     1
 
-//#define PROFILE_STRING                               "DOOR_JAM_2400"
-//#define DISTANCES_ARRAY_SIZE                         10   // nb of samples
-//#define MAX_DISTANCE                                 2400 // mm
-//#define MIN_DISTANCE                                 0   // mm
 #define DIST_THRESHOLD                               1600  // mm
 #define ROWS_OF_SPADS                                4 // 8x16 SPADs ROI
 #define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target
-//#define DISTANCE_MODE                                DISTANCE_MODE_LONG
 #define ROI_WIDTH                                    4
 #define ROI_HEIGHT                                   4
 
@@ -222,12 +217,8 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatu
   return PeopleCount;
 }
 
-// 231 167
-//int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatus) {
-//  //
-//}
-
-///* TODO
-// *  p9 Calibration Details (offset, crosstalk (coverglass thing only maybe?) -- idk really how to do this part: https://www.st.com/content/ccc/resource/technical/document/user_manual/group1/fc/c3/0b/8c/0c/da/4c/8d/DM00600212/files/DM00600212.pdf/jcr:content/translations/en.DM00600212.pdf
-// */
-// */
+//#define PROFILE_STRING                               "DOOR_JAM_2400"
+//#define DISTANCES_ARRAY_SIZE                         10   // nb of samples
+//#define MAX_DISTANCE                                 2400 // mm
+//#define MIN_DISTANCE                                 0   // mm
+//#define DISTANCE_MODE                                DISTANCE_MODE_LONG
