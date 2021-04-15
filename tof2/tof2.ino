@@ -1,31 +1,40 @@
 #include <Wire.h>
 #include <SparkFun_VL53L1X.h>
 
-char peopleCounterArray[50];
+#define NOBODY                    0
+#define SOMEONE                   1
+#define LEFT                      0
+#define RIGHT                     1
 
-static const int NOBODY = 0;
-static const int SOMEONE = 1;
-static const int LEFT = 0;
-static const int RIGHT = 1;
-
-static int center[2] = {167, 231}; // andrea's suggested value also try
-int zone = 0;
-
-// Specific to our Profile
-// #define PROFILE_STRING                               "DOOR_JAM_2400"
-#define DISTANCES_ARRAY_SIZE                         10   // nb of samples
-// #define MAX_DISTANCE                                 2000 // mm, 2000
-// #define MIN_DISTANCE                                 0   // mm
-#define DIST_THRESHOLD                               1600  // mm, 1600
-// #define ROWS_OF_SPADS                                8 // 8x16 SPADs ROI
-#define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target, ignor eusing 50
+//#define PROFILE_STRING                               "DOOR_JAM_2400"
+//#define DISTANCES_ARRAY_SIZE                         10   // nb of samples
+//#define MAX_DISTANCE                                 2400 // mm
+//#define MIN_DISTANCE                                 0   // mm
+#define DIST_THRESHOLD                               1600  // mm
+#define ROWS_OF_SPADS                                4 // 8x16 SPADs ROI
+#define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target
+//#define DISTANCE_MODE                                DISTANCE_MODE_LONG
 #define ROI_WIDTH                                    4
 #define ROI_HEIGHT                                   4
+
+// #if ROWS_OF_SPADS == 4
+// #define FRONT_ZONE_CENTER                            151
+// #define BACK_ZONE_CENTER                             247
+// #elif ROWS_OF_SPADS == 6
+// #define FRONT_ZONE_CENTER                            159
+// #define BACK_ZONE_CENTER                             239
+// #elif ROWS_OF_SPADS == 8
+// #define FRONT_ZONE_CENTER                            175 // was 167, see UM2555 on st.com, centre = 175 has better return signal rate for the ROI #1
+// #define BACK_ZONE_CENTER                             231 
+// #endif
+
+static int center[2] = {167, 231}; // FRONT_ZONE_CENTER, BACK_ZONE_CENTER
+int zone = 0;
+
 /* Notes
-Supported Timing Budgets: ULD, [20 33 50 100]. (found following somewhere, don't think 15 is allowed: [15, 20, 33, 50, 100, 200, 500])
+Supported Timing Budgets: ULD, [20 33 50 100] (OR main.c - [15, 20, 50, 100, 200, 500])
 Minimimum timing budget is 20ms for short distance mode and 33ms for medium & long distance modes
 */
-// supported [20 33 50 100] [15, 20, 33, 50, 100, 200, 500] , don't think 15 is actually allowed, 66 Hz max ranging, 33 ms min for our application
 SFEVL53L1X sensor(Wire);
 
 //void zonesCalibration();
