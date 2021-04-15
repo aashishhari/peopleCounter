@@ -1,0 +1,2 @@
+void tofInit();
+void range();

@@ -28,8 +28,9 @@ static int center[2] = {167, 231}; // FRONT_ZONE_CENTER, BACK_ZONE_CENTER
 int zone = 0;
 
 /* Notes
-Supported Timing Budgets: ULD, [20 33 50 100] (OR main.c - [15, 20, 50, 100, 200, 500])
+Supported Timing Budgets: ULD, [20 33 50 100] (OR main.c - [15, 20, 50, 100, 200, 500]) ULD: [20ms 1000]
 Minimimum timing budget is 20ms for short distance mode and 33ms for medium & long distance modes
+Short: 1.3m, Medium: 3m, Long: 4m (Default)
 */
 SFEVL53L1X sensor(Wire);
 
@@ -38,7 +39,7 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatu
 void setup() {
   Serial.begin(115200);
   Wire.begin();
-  Wire.setClock(400000); // use 400 kHz I2C
+  Wire.setClock(400000); // use 400 kHz I2C 0x52
   // Failure Mode 1
   if (sensor.begin()) // init() is deprecated version
   {
@@ -48,16 +49,14 @@ void setup() {
   Serial.println("Success connecting to sensor");
   
   sensor.setDistanceModeLong(); // modify this mode.
-  sensor.setTimingBudgetInMs(TIMING_BUDGET); // [20 33 50 100], [15, 20, 33, 50, 100, 200, 500]
-  sensor.setIntermeasurementPeriod(TIMING_BUDGET+1); // This period should be at least as long as the timing budget -- (additional time is time time between measurements)
+  sensor.setTimingBudgetInMs(TIMING_BUDGET);
+  sensor.setIntermeasurementPeriod(TIMING_BUDGET+4); // The minimum inter-measurement period must be longer than the timing budget + 4 ms - UM2356 (perhaps we can get away with 1 we'll see)
   sensor.setROI(ROI_WIDTH,ROI_HEIGHT,center[zone]);
-  sensor.clearInterrupt();
   sensor.startRanging();
   Serial.println("Starting...");
-  sensor.clearInterrupt();
 }
 
-void loop() {
+void loop() { // avoid loop timing u...
   if(sensor.checkForDataReady()) {
     uint16_t rangeStatus = sensor.getRangeStatus();
     int16_t distance = sensor.getDistance(); //uint.
@@ -77,6 +76,7 @@ void loop() {
     zone = zone + 1;
     zone = zone % 2;
     sensor.setROI(ROI_WIDTH,ROI_HEIGHT, center[zone]);
+    // move to timer so I can control timing.
   }
 }
 
@@ -102,18 +102,18 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatu
   int AllZonesCurrentStatus = 0;
   int AnEventHasOccured = 0;
   
-  // Add just picked distance to the table of the corresponding zone
+  /*Adds inputted distance to Distances matrix (10 samples (DISTANCES_ARRAY_SIZE as defined at top)*/
   if (DistancesTableSize[zone] < DISTANCES_ARRAY_SIZE) {
     Distances[zone][DistancesTableSize[zone]] = Distance;
     DistancesTableSize[zone] ++;
   }
-  else {
+  else { // otherewise shift left & refresh last entry to most recent distance
     for (i=1; i<DISTANCES_ARRAY_SIZE; i++)
       Distances[zone][i-1] = Distances[zone][i];
     Distances[zone][DISTANCES_ARRAY_SIZE-1] = Distance;
   }
   
-  // pick up the min distance
+  // Use minDistance from "10" (DISTANCES_ARRAY_SIZE) sample for threshold pass determination
   MinDistance = Distances[zone][0];
   if (DistancesTableSize[zone] >= 2) {
     for (i=1; i<DistancesTableSize[zone]; i++) {
@@ -149,15 +149,14 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatu
   else {
     
     if (CurrentZoneStatus != RightPreviousStatus) {
-      
-      // event in left zone has occured
+      // event in right zone has occured
       AnEventHasOccured = 1;
       if (CurrentZoneStatus == SOMEONE) {
         AllZonesCurrentStatus += 2;
       }
       // need to left right zone as well ...
       if (LeftPreviousStatus == SOMEONE) {
-        // event in left zone has occured
+        // event in right zone has occured
         AllZonesCurrentStatus += 1;
       }
       // remember for next time
@@ -217,6 +216,7 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatu
   }
   return PeopleCount;
 }
+
 
 //#define PROFILE_STRING                               "DOOR_JAM_2400"
 //#define DISTANCES_ARRAY_SIZE                         10   // nb of samples
