@@ -11,7 +11,7 @@
 #define ROWS_OF_SPADS                                4 // 8x16 SPADs ROI
 #define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target
 #define ROI_WIDTH                                    4
-#define ROI_HEIGHT                                   4
+#define ROI_HEIGHT                                   8
 
 // #if ROWS_OF_SPADS == 4
 // #define FRONT_ZONE_CENTER                            151

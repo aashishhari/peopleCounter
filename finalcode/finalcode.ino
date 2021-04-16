@@ -15,10 +15,6 @@
 //const char * host = "192.168.1.8";
 
 //ToF Globals
-#define SHUTDOWN_PIN 2 //idk
-#define INTERRUPT_PIN 3 //idk
-const int threshold_percentage = 80;
-char peopleCounterArray[50];
 static const int NOBODY = 0;
 static const int SOMEONE = 1;
 static const int LEFT = 0;
@@ -26,14 +22,12 @@ static const int RIGHT = 1;
 static int center[2] = {167, 231}; // andrea's suggested value also try
 int zone = 0;
 // Specific to our Profile
-#define PROFILE_STRING                               "DOOR_JAM_2400"
 #define DISTANCES_ARRAY_SIZE                         10   // nb of samples
-#define MAX_DISTANCE                                 2400 // mm, 2000
-#define MIN_DISTANCE                                 0   // mm
-#define DIST_THRESHOLD                               1600  // mm, 1600
-#define ROWS_OF_SPADS                                8 // 8x16 SPADs ROI
-#define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target, ignor eusing 50
-#define DISTANCE_MODE                                DISTANCE_MODE_LONG
+#define DIST_THRESHOLD                               1600  // mm
+#define ROWS_OF_SPADS                                4 // 8x16 SPADs ROI
+#define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target
+#define ROI_WIDTH                                    4
+#define ROI_HEIGHT                                   4
 SFEVL53L1X sensor(Wire);
 int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatus);
 int count = 0;
@@ -46,7 +40,6 @@ int peepcount = 0;
 float threshold = 1000; // kg
 byte trials = 1;
 
-
 //final code globals
 int people = 0;
 int lastactive = 0;
@@ -58,7 +51,7 @@ int timeBetweenBothTrigger = 500;
 volatile int counter = 0;
 
 void setup() {
-  Serial.begin(115200);
+  Serial.begin(9600);
   // put your setup code here, to run once:
   //1. setup load sensor
   //Server setup
@@ -132,7 +125,7 @@ void setup() {
 
   /* SETUP TOF SENSOR */
   Wire.begin();
-  Wire.setClock(400000); // use 400 kHz I2C
+  Wire.setClock(400000); // use 400 kHz I2C 0x52
   // Failure Mode 1
   if (sensor.begin()) // init() is deprecated version
   {
@@ -141,20 +134,12 @@ void setup() {
   }
   Serial.println("Success connecting to sensor");
   
-  // Minimum timing budget is 20ms for short distance mode and 33ms for medium & long distance modes ==> Check datasheet for more details.
-  sensor.setDistanceModeLong(); // discrete set of supported measurement frequencies for ULD [20 33 50 100] [15, 20, 33, 50, 100, 200, 500] , don't think 15 is actually allowed, 66 Hz max ranging, 33 ms min for our application
-  sensor.setTimingBudgetInMs(33); // timing budget for measurement
-  // Start continuous readings at a rate of one measurement every 50 ms (the inter-measurement period). 
-  // This period should be at least as long as the timing budget.
-  sensor.setIntermeasurementPeriod(34); // time between measurements. (Delay between Ranging operations)
-  sensor.setROI(4,4,center[zone]);
-
-  // sensor zone calibration -- ok this is how we get the zonedata, to implement later (add next line there as well)
+  sensor.setDistanceModeLong(); // modify this mode.
+  sensor.setTimingBudgetInMs(TIMING_BUDGET);
+  sensor.setIntermeasurementPeriod(TIMING_BUDGET+4); // The minimum inter-measurement period must be longer than the timing budget + 4 ms - UM2356 (perhaps we can get away with 1 we'll see)
+  sensor.setROI(ROI_WIDTH,ROI_HEIGHT,center[zone]);
   sensor.startRanging();
-  Serial.println("Starting ToF...");
-  /* Complete */
-  // setUpTimer(1, flip, 1000);
-  // startTimer(1);
+  Serial.println("Starting...");
 }
 
 void flip() {
@@ -173,7 +158,7 @@ void flip() {
 void loop() {
   //1. perform one iteration of the load sensor: returns the last time it was pressed down
 //  WiFiClient client;
-  float reading = scale.get_units(5);
+  float reading = scale.get_units(1);
   //Serial.println(reading);
   if(reading > threshold){ // maybe include a boolean check to see if the TOF is picking up something also
     //peepcount = peepcount + 1;
@@ -200,26 +185,13 @@ void loop() {
   }
   //2. perform one iteration of the tof: returns the last time it was triggered
   if(sensor.checkForDataReady()) {
-    //sensor.setDistanceThreshold(100,300,3); 
-    //setDist(dev,100,300,0,1): below 100 ||| setDist(dev,100,300,1,1): above 300 ||| setDist(dev,100,300,2,1): out-of-window ||| setDist(dev,100,300,3,1): in window
     uint16_t rangeStatus = sensor.getRangeStatus();
     int16_t distance = sensor.getDistance(); //uint.
     sensor.clearInterrupt();
-//    Serial.print("Center ");
-//    Serial.print(center[zone]);
-//    Serial.print(" Distance: ");
-//    Serial.println(distance);
     count = ProcessPeopleCountingData(distance,zone,rangeStatus);
-    if(!count) {
-      Serial.print(count);
-    } else {
-      Serial.println();
-      Serial.print("Count: ");
-      Serial.println(count);
-    }
     zone = zone + 1;
     zone = zone % 2;
-    sensor.setROI(4,4, center[zone]);
+    sensor.setROI(ROI_WIDTH,ROI_HEIGHT, center[zone]);
   }
   if(oldCount != count) {
     toftime = millis();
@@ -246,10 +218,12 @@ void loop() {
       if (toftime > loadtime) {
         people++; //implement wifi
         Serial.println(people);
+        Serial.println(9237594325724895);
       }
       else {
         people--; //implement wifi
         Serial.println(people);
+        Serial.println(9237594325724895);
       }
       lastbothactive = bothactive;
       loadtime = 0;
