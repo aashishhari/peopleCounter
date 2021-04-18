@@ -150,19 +150,6 @@ void setup() {
   /* --- */
 }
 
-void flip() {
-  counter++;
-  if(counter > 5000) {
-    counter = 0;
-  }
-//  if(3000 < counter && counter < 3500) g{
-//    loadtime = milddwdadadsgfsgfdfgdsssssssdflis();
-//  }
-  if(4000 < counter && counter < 4500) {
-    toftime = millis();
-  }
-}
-
 //float reading = 0;
 float prevReading = 0;
 void loop() { // ok need to walk through this code after peopleCount;
@@ -174,7 +161,6 @@ void loop() { // ok need to walk through this code after peopleCount;
     //peepcount = peepcount + 1;
     loadtime = millis(); //Serial.println(peepcount); //delay(100);
   }
-
   /* Alternate Approach (will need threshold modification)
   if(abs(reading - prevReading) > threshold ) {
     loadtime = millis();
@@ -183,7 +169,7 @@ void loop() { // ok need to walk through this code after peopleCount;
   
   //2. perform one iteration of the tof: returns the last time it was triggered
   if(sensor.checkForDataReady()) {
-    int16_t distance = sensor.getDistance(); //uint.
+    int16_t distance = sensor.getDistance();
     sensor.clearInterrupt();
     count = ProcessPeopleCountingData(distance,zone,rangeStatus);
     zone = zone + 1;
@@ -195,6 +181,7 @@ void loop() { // ok need to walk through this code after peopleCount;
   }
   oldCount = count;
 
+  // how long our waiting state should be?
   //do some code that determines if a person walked in or out
   if (loadtime == 0 && toftime == 0 || (millis() - lastbothactive < timeBetweenBothTrigger)) {
     // do nothing
@@ -208,10 +195,9 @@ void loop() { // ok need to walk through this code after peopleCount;
   else {
     int bothactive = millis();
     Serial.println(bothactive - lastactive);
-    if (bothactive - lastactive < timeBetweenActivation) {
-      
+    if (bothactive - lastactive < timeBetweenActivation) { // difference between this & trigger ^?
       if (toftime - loadtime > 1500) {
-        people++; //implement wifi
+        people++;
         Serial.println(people);
         setupwifi();
       }
@@ -257,7 +243,6 @@ void setupwifi() {
  
     Serial.println("Disconnecting...");
     client.stop();
- 
     //delay(1000); 
   }
 }
