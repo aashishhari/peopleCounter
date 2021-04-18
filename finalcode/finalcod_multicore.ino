@@ -7,86 +7,90 @@
 #include <SparkFun_VL53L1X.h>
 #include <WiFi.h>
 
-//wifi globals
+/* Multicore */
+TaskHandle_t main;
+TaskHandle_t wifiUpdate;
+/** done **/
+
+/** WIFI Globals **/
 const char* ssid = "NETGEAR92";
 const char* password =  "youngtrumpet129";
-// 
 const uint16_t port = 8090;
 const char * host = "192.168.1.16";
+WiFiClient client;
 
-//ToF Globals
+void wifiUpdate();
+/** done **/
+
+/** TOF Globals **/
 static const int NOBODY = 0;
 static const int SOMEONE = 1;
 static const int LEFT = 0;
 static const int RIGHT = 1;
 static int center[2] = {167, 231}; // andrea's suggested value also try
 int zone = 0;
-// Specific to our Profile
-#define DISTANCES_ARRAY_SIZE                         10   // nb of samples
+
 #define DIST_THRESHOLD                               1600  // mm
 #define ROWS_OF_SPADS                                4 // 8x16 SPADs ROI
 #define TIMING_BUDGET                                33  // was 20 ms, I found 33 ms has better succes rate with lower reflectance target
 #define ROI_WIDTH                                    4
 #define ROI_HEIGHT                                   4
 SFEVL53L1X sensor(Wire);
-int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatus);
-int count = 0;
-int oldCount = 0;
-WiFiClient client;
+int ProcessPeopleCountingData(int16_t Distance, uint8_t zone);
+int tofCount = 0;
+int tofOldCount = 0;
 /** done **/
 
-//load sensor globals
+/** Load Sensor Globals **/
 HX711 scale;
-int peepcount = 0;
 float threshold = 1000; // kg
-byte trials = 1;
+/** done **/
 
-//final code globals
-int oldwificount = 0;
-int people = 0;
-int oldpeoplecount = 0;
+/** FINAL CODE Globals **/
+int oldwificount = 0; 
+volatile int people = 0; // for multicore operation
+volatile int oldpeoplecount = 0; // "same as ^", is this necessary tho?
 int lastactive = 0;
 int lastbothactive = 0;
 int timeBetweenActivation = 3000;
 int timeBetweenBothTrigger = 500;
- int loadtime = 0;
- int toftime = 0;
-volatile int counter = 0;
+int loadtime = 0;
+int toftime = 0;
+/** done **/
 
 void setup() {
   Serial.begin(9600);
-  // put your setup code here, to run once:
-  //1. setup load sensor
-  //Server setup
+  
+  /* SERVER Setup */
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
     Serial.println("...");
   }
- 
   Serial.print("WiFi connected with IP: ");
   Serial.println(WiFi.localIP());
 
-  //load sensor setup
-  rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
+  xTaskCreatePinnedToCore( // Pin Wifi Sends to Core 0
+    sendwifi,   /* Task function. */
+    "wifiUpdate",     /* name of task. */
+    10000,       /* Stack size of task */
+    NULL,        /* parameter of the task */
+    1,           /* priority of the task */
+    &wifi,      /* Task handle to keep track of created task */
+    0);          /* pin task to core 0 */                  
+  delay(500); 
+  /* --- */
 
+  /* 1. Setup Load Sensor */
+  /* Notes:
+  parameter "gain" is ommited; the default value 128 is used by the library 
+  HX711.DOUT  - pin #A1
+  HX711.PD_SCK - pin #A0
+  */
+  rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
   Serial.println("Initializing the scale");
-  // parameter "gain" is ommited; the default value 128 is used by the library
-  // HX711.DOUT  - pin #A1
-  // HX711.PD_SCK - pin #A0
   scale.begin(26, 25);
-//
-//  // uncomment if you want to calibrate the bowl
-//  scale. set_scale();
-//  scale.tare();
-//  Serial.println("Put known weight on ");
-//  //displayString("Calibrate", 64, 10);
-//  delay(2500);
-//  Serial.print(scale.get_units(10));
-//  Serial.print(" Divide this value to the weight and insert it in the scale.set_scale() statement");
-////  displayFloat(scale.get_units(10), 64, 15);
-//  while(1==1);
-//
+
   Serial.println("Before setting up the scale:");
   Serial.print("read: \t\t");
   Serial.println(scale.read());     // print a raw reading from the ADC
@@ -120,187 +124,141 @@ void setup() {
   // by the SCALE parameter set with set_scale
 
   Serial.println("Readings:");
-//  client.publish("esp/test", "Hello from ESP32");
-//  setUpTimer(0, count_person, 1000000);
-//  startTimer(0);
-  //load_sensor_setup();
-
-  //setUpTimer(1, setupwifi, 50000); 
-  //startTimer(1);1
-  
+  /* --- */
 
   /* SETUP TOF SENSOR */
   Wire.begin();
   Wire.setClock(400000); // use 400 kHz I2C 0x52
-  // Failure Mode 1
-  if (sensor.begin()) // init() is deprecated version
-  {
+  if (sensor.begin()) { // init() is deprecated()
     Serial.println("Error Connecting to Sensor");
-    while(1);
+    while(1); // oh maybe I can fix this...do a loop type thing.
   }
   Serial.println("Success connecting to sensor");
-  
   sensor.setDistanceModeLong(); // modify this mode.
   sensor.setTimingBudgetInMs(TIMING_BUDGET);
   sensor.setIntermeasurementPeriod(TIMING_BUDGET+4); // The minimum inter-measurement period must be longer than the timing budget + 4 ms - UM2356 (perhaps we can get away with 1 we'll see)
   sensor.setROI(ROI_WIDTH,ROI_HEIGHT,center[zone]);
   sensor.startRanging();
   Serial.println("Starting...");
+  /* --- */
+
+  xTaskCreatePinnedToCore( // Running on Core #1
+    main,   /* Task function. */
+    "main",     /* name of task. */
+    10000,       /* Stack size of task */
+    NULL,        /* parameter of the task */
+    1,           /* priority of the task */
+    &main,      /* Task handle to keep track of created task */
+    1);          /* pin task to core 1 */
+  delay(500);
 }
 
-void flip() {
-  counter++;
-  if(counter > 5000) {
-    counter = 0;
-  }
-//  if(3000 < counter && counter < 3500) g{
-//    loadtime = milddwdadadsgfsgfdfgdsssssssdflis();
-//  }
-  if(4000 < counter && counter < 4500) {
-    toftime = millis();
-  }
-}
+void main( void * pvParameters ){
+  Serial.print("Task2 running on core ");
+  Serial.println(xPortGetCoreID());
 
-void loop() {
-  //1. perform one iteration of the load sensor: returns the last time it was pressed down
-
-  float reading = scale.get_units(1);
-  Serial.println(reading);
-  if(reading > threshold){ // maybe include a boolean check to see if the TOF is picking up something also
+  for(;;){
+    float reading = scale.get_units(1);
+    Serial.println(reading); // consider alternate approach as well if this works.
+    if(reading > threshold) { // maybe include a boolean check to see if the TOF is picking up something also
     //peepcount = peepcount + 1;
-    loadtime = millis();
-    //Serial.println(peepcount);
-    //delay(100);
-  
-  }
-  //2. perform one iteration of the tof: returns the last time it was triggered
-  if(sensor.checkForDataReady()) {
-    uint16_t rangeStatus = sensor.getRangeStatus();
-    int16_t distance = sensor.getDistance(); //uint.
-    sensor.clearInterrupt();
-    count = ProcessPeopleCountingData(distance,zone,rangeStatus);
-    zone = zone + 1;
-    zone = zone % 2;
-    sensor.setROI(ROI_WIDTH,ROI_HEIGHT, center[zone]);
-  }
-  if(oldCount != count) {
-    toftime = millis();
-  }
-  oldCount = count;
-  //toftime = millis();
-  //delete count from the code and instead return millis during the trigger
-  //int loadtime = 0; //these two variables get initialized by the above two lines
-  //int toftime = 0;  //use millis to get these two times
+      loadtime = millis(); //Serial.println(peepcount); //delay(100);
+    }
 
-  //do some code that determines if a person walked in or out
-  if (loadtime == 0 && toftime == 0 || (millis() - lastbothactive < timeBetweenBothTrigger)) {
-    
-  }
-  else if (loadtime != 0 && toftime == 0) {
-    lastactive = loadtime;
-  }
-  else if (loadtime == 0 && toftime != 0) {
-    lastactive = toftime;
-  }
-  else {
-    int bothactive = millis();
-    Serial.println(bothactive - lastactive);
-    if (bothactive - lastactive < timeBetweenActivation) {
-      
-      if (toftime - loadtime > 1500) {
-        people++; //implement wifi
-        Serial.println(people);
-        setupwifi();
-      }
-      else {
-        if(people > 0) {
-          people--;
-      }//implement wifi
-        Serial.println(people);
-        setupwifi();
-      }
-      lastbothactive = bothactive;
-      loadtime = 0;
-      toftime = 0;
+      //2. perform one iteration of the tof: returns the last time it was triggered
+    if(sensor.checkForDataReady()) {
+      int16_t distance = sensor.getDistance();
+      sensor.clearInterrupt();
+      tofCount = ProcessPeopleCountingData(distance,zone,rangeStatus);
+      zone = zone + 1;
+      zone = zone % 2;
+      sensor.setROI(ROI_WIDTH,ROI_HEIGHT, center[zone]);
+    }
+    if(oldCount != count) {
+      toftime = millis();
+    }
+    tofOldCount = tofCount;
+
+    if (loadtime == 0 && toftime == 0 || (millis() - lastbothactive < timeBetweenBothTrigger)) {
+    // do nothing
+    }
+    else if (loadtime != 0 && toftime == 0) {
+      lastactive = loadtime;
+    }
+    else if (loadtime == 0 && toftime != 0) {
+      lastactive = toftime;
     }
     else {
-      lastactive = bothactive;
-      if(toftime > loadtime) {
+      int bothactive = millis();
+      Serial.println(bothactive - lastactive);
+      if (bothactive - lastactive < timeBetweenActivation) { // difference between this & trigger ^?
+        if (toftime - loadtime > 1500) {
+          people++;
+          Serial.println(people);
+        }
+        else {
+          if(people > 0) {
+            people--;
+        } 
+          Serial.println(people);
+        }
+        lastbothactive = bothactive;
         loadtime = 0;
+        toftime = 0;
       }
       else {
-        toftime = 0;
+        lastactive = bothactive;
+        if(toftime > loadtime) {
+          loadtime = 0;
+        }
+        else {
+          toftime = 0;
+        }
       }
     }
   }
+}
+
+//float reading = 0;
+// float prevReading = 0;
+void loop() {
   
 }
 
-void setupwifi() {
-  if(oldpeoplecount != people && millis()-oldwificount > 500) {
-    oldwificount = millis();
-    oldpeoplecount = people;
-      if (!client.connect(host, port)) {
- 
+// separate core wifi implementation
+void wifiUpdate(void * pvParameters) {
+  Serial.print("WifiUpdate running on core ");
+  Serial.println(xPortGetCoreID());
+  for(;;) {
+    if(oldpeoplecount != people) {
+      oldpeoplecount = people;
+      if(!client.connect(host, port)) {
         Serial.println("Connection to host failed");
- 
         delay(1000);
-        return;
+      }
+      Serial.println("Connected to server successful!");
+      client.print(people);
+      Serial.println("Disconnecting...");
+      client.stop();
     }
- 
-    Serial.println("Connected to server successful!");
- 
-    client.print(people);
- 
-    Serial.println("Disconnecting...");
-    client.stop();
- 
-    //delay(1000); 
   }
 }
 
-
-int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatus) {
+int ProcessPeopleCountingData(int16_t Distance, uint8_t zone) {
   static int PathTrack[] = {0,0,0,0};
   static int PathTrackFillingSize = 1; // init this to 1 as we start from state where nobody is any of the zones
   static int LeftPreviousStatus = NOBODY;
   static int RightPreviousStatus = NOBODY;
-  static int PeopleCount = 0;
-  static uint16_t Distances[2][DISTANCES_ARRAY_SIZE];
-  static uint8_t DistancesTableSize[2] = {0,0};
-
-  uint16_t MinDistance;
-  uint8_t i;
+  static int PeopleCount = 0; // remember this is GLOBAL!
 
   int CurrentZoneStatus = NOBODY;
   int AllZonesCurrentStatus = 0;
   int AnEventHasOccured = 0;
-  
-  // Add just picked distance to the table of the corresponding zone
-  if (DistancesTableSize[zone] < DISTANCES_ARRAY_SIZE) {
-    Distances[zone][DistancesTableSize[zone]] = Distance;
-    DistancesTableSize[zone] ++;
-  }
-  else {
-    for (i=1; i<DISTANCES_ARRAY_SIZE; i++)
-      Distances[zone][i-1] = Distances[zone][i];
-    Distances[zone][DISTANCES_ARRAY_SIZE-1] = Distance;
-  }
-  
-  // pick up the min distance
-  MinDistance = Distances[zone][0];
-  if (DistancesTableSize[zone] >= 2) {
-    for (i=1; i<DistancesTableSize[zone]; i++) {
-      if (Distances[zone][i] < MinDistance)
-        MinDistance = Distances[zone][i];
-    }
-  }
-  
+
   if (MinDistance < DIST_THRESHOLD) {
     // Someone is in !
     CurrentZoneStatus = SOMEONE;
   }
-  
   // left zone
   if (zone == LEFT) {
     if (CurrentZoneStatus != LeftPreviousStatus) {
@@ -312,7 +270,7 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatu
       }
       // need to check right zone as well ...
       if (RightPreviousStatus == SOMEONE) {
-        // event in left zone has occured
+        // event in right zone has occured
         AllZonesCurrentStatus += 2;
       }
       // remember for next time
@@ -321,10 +279,8 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatu
   }
   // right zone
   else {
-    
     if (CurrentZoneStatus != RightPreviousStatus) {
-      
-      // event in left zone has occured
+      // event in right zone has occured
       AnEventHasOccured = 1;
       if (CurrentZoneStatus == SOMEONE) {
         AllZonesCurrentStatus += 2;
@@ -341,40 +297,31 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatu
   // if an event has occured
   if (AnEventHasOccured) {
     if (PathTrackFillingSize < 4) {
-      PathTrackFillingSize ++;
+      PathTrackFillingSize++;
     }
     
     // if nobody anywhere lets check if an exit or entry has happened
     if ((LeftPreviousStatus == NOBODY) && (RightPreviousStatus == NOBODY)) {
-      
       // check exit or entry only if PathTrackFillingSize is 4 (for example 0 1 3 2) and last event is 0 (nobobdy anywhere)
       if (PathTrackFillingSize == 4) {
-        // check exit or entry. no need to check PathTrack[0] == 0 , it is always the case
-        
+        // check exit or entry. no need to check PathTrack[0] == 0 , it is always the case NOBODY
         if ((PathTrack[1] == 1)  && (PathTrack[2] == 3) && (PathTrack[3] == 2)) {
           // This an entry
           PeopleCount = PeopleCount + 1;
           // reset the table filling size in case an entry or exit just found
-          DistancesTableSize[0] = 0;
-          DistancesTableSize[1] = 0;
           Serial.print("Walk In, People Count=");
           Serial.println(PeopleCount);
         } else if ((PathTrack[1] == 2)  && (PathTrack[2] == 3) && (PathTrack[3] == 1)) {
           // This an exit
           PeopleCount = PeopleCount - 1;
           // reset the table filling size in case an entry or exit just found
-          DistancesTableSize[0] = 0;
-          DistancesTableSize[1] = 0;
           Serial.print("Walk Out, People Count="); 
           Serial.println(PeopleCount);
         } else {
           // reset the table filling size also in case of unexpected path
-          DistancesTableSize[0] = 0;
-          DistancesTableSize[1] = 0;
           Serial.println("Wrong path");
         }
       }
-      
       PathTrackFillingSize = 1;
     }
     else {
