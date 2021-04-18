@@ -36,9 +36,9 @@ int oldCount = 0;
 
 /** Load Sensor Globals **/
 HX711 scale;
-int peepcount = 0; // unused
 float threshold = 1000; // kg
-byte trials = 1; // unused
+float reading = 0;
+float prevReading = 0;
 /** done **/
 
 /** FINAL CODE Globals **/
@@ -51,7 +51,6 @@ int timeBetweenActivation = 3000;
 int timeBetweenBothTrigger = 500;
 int loadtime = 0;
 int toftime = 0;
-volatile int counter = 0; // unused
 /** done **/
 
 void setup() {
@@ -76,18 +75,6 @@ void setup() {
   rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
   Serial.println("Initializing the scale");
   scale.begin(26, 25);
-
-  /* uncomment if you want to calibrate the bowl
-  scale. set_scale();
-  scale.tare();
-  Serial.println("Put known weight on ");
-  //displayString("Calibrate", 64, 10);
-  delay(2500);
-  Serial.print(scale.get_units(10));
-  Serial.print(" Divide this value to the weight and insert it in the scale.set_scale() statement");
-  //  displayFloat(scale.get_units(10), 64, 15);
-  while(1==1);
-  */
 
   Serial.println("Before setting up the scale:");
   Serial.print("read: \t\t");
@@ -141,12 +128,10 @@ void setup() {
   /* --- */
 }
 
-//float reading = 0;
-float prevReading = 0;
 void loop() { // ok need to walk through this code after peopleCount;
   //1. perform one iteration of the load sensor: returns the last time it was pressed down
   // prevReading = reading;
-  float reading = scale.get_units(1);
+  reading = scale.get_units(1);
   Serial.println(reading);
   if(reading > threshold){ // maybe include a boolean check to see if the TOF is picking up something also
     //peepcount = peepcount + 1;

@@ -10,6 +10,8 @@
 /* Multicore */
 TaskHandle_t main;
 TaskHandle_t wifiUpdate;
+void main(void *pvParameters);
+void wifiUpdate(void *pvParameters);
 /** done **/
 
 /** WIFI Globals **/
@@ -18,8 +20,6 @@ const char* password =  "youngtrumpet129";
 const uint16_t port = 8090;
 const char * host = "192.168.1.16";
 WiFiClient client;
-
-void wifiUpdate();
 /** done **/
 
 /** TOF Globals **/
@@ -44,10 +44,11 @@ int tofOldCount = 0;
 /** Load Sensor Globals **/
 HX711 scale;
 float threshold = 1000; // kg
+float reading = 0;
+float prevReading = 0;
 /** done **/
 
 /** FINAL CODE Globals **/
-int oldwificount = 0; 
 volatile int people = 0; // for multicore operation
 volatile int oldpeoplecount = 0; // "same as ^", is this necessary tho?
 int lastactive = 0;
@@ -131,7 +132,7 @@ void setup() {
   Wire.setClock(400000); // use 400 kHz I2C 0x52
   if (sensor.begin()) { // init() is deprecated()
     Serial.println("Error Connecting to Sensor");
-    while(1); // oh maybe I can fix this...do a loop type thing.
+    while(1); // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! oh maybe I can fix this...do a loop type thing.
   }
   Serial.println("Success connecting to sensor");
   sensor.setDistanceModeLong(); // modify this mode.
@@ -153,12 +154,13 @@ void setup() {
   delay(500);
 }
 
-void main( void * pvParameters ){
+void main(void * pvParameters) {
   Serial.print("Task2 running on core ");
   Serial.println(xPortGetCoreID());
 
   for(;;){
-    float reading = scale.get_units(1);
+    // prevReading = reading; (threshold thing.)
+    reading = scale.get_units(1);
     Serial.println(reading); // consider alternate approach as well if this works.
     if(reading > threshold) { // maybe include a boolean check to see if the TOF is picking up something also
     //peepcount = peepcount + 1;
@@ -222,7 +224,7 @@ void main( void * pvParameters ){
 //float reading = 0;
 // float prevReading = 0;
 void loop() {
-  
+
 }
 
 // separate core wifi implementation
