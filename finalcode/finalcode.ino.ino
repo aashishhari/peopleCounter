@@ -5,14 +5,14 @@
 
 #include <Wire.h>
 #include <SparkFun_VL53L1X.h>
-//#include <WiFi.h>
+#include <WiFi.h>
 
 //wifi globals
-//const char* ssid = "SealeoG";
-//const char* password =  "rhshdh2000";
+const char* ssid = "NETGEAR92";
+const char* password =  "youngtrumpet129";
 // 
-//const uint16_t port = 8090;
-//const char * host = "192.168.1.8";
+const uint16_t port = 8090;
+const char * host = "192.168.1.16";
 
 //ToF Globals
 static const int NOBODY = 0;
@@ -30,8 +30,9 @@ int zone = 0;
 #define ROI_HEIGHT                                   4
 SFEVL53L1X sensor(Wire);
 int ProcessPeopleCountingData(int16_t Distance, uint8_t zone, uint8_t RangeStatus);
-int count = 0;t
+int count = 0;
 int oldCount = 0;
+WiFiClient client;
 /** done **/
 
 //load sensor globals
@@ -41,7 +42,9 @@ float threshold = 1000; // kg
 byte trials = 1;
 
 //final code globals
+int oldwificount = 0;
 int people = 0;
+int oldpeoplecount = 0;
 int lastactive = 0;
 int lastbothactive = 0;
 int timeBetweenActivation = 3000;
@@ -55,14 +58,14 @@ void setup() {
   // put your setup code here, to run once:
   //1. setup load sensor
   //Server setup
-//  WiFi.begin(ssid, password);
-//  while (WiFi.status() != WL_CONNECTED) {
-//    delay(500);
-//    Serial.println("...");
-//  }
-// 
-//  Serial.print("WiFi connected with IP: ");
-//  Serial.println(WiFi.localIP());
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.println("...");
+  }
+ 
+  Serial.print("WiFi connected with IP: ");
+  Serial.println(WiFi.localIP());
 
   //load sensor setup
   rtc_clk_cpu_freq_set(RTC_CPU_FREQ_80M);
@@ -121,6 +124,9 @@ void setup() {
 //  setUpTimer(0, count_person, 1000000);
 //  startTimer(0);
   //load_sensor_setup();
+
+  //setUpTimer(1, setupwifi, 50000); 
+  //startTimer(1);1
   
 
   /* SETUP TOF SENSOR */
@@ -157,31 +163,15 @@ void flip() {
 
 void loop() {
   //1. perform one iteration of the load sensor: returns the last time it was pressed down
-//  WiFiClient client;
+
   float reading = scale.get_units(1);
-  //Serial.println(reading);
+  Serial.println(reading);
   if(reading > threshold){ // maybe include a boolean check to see if the TOF is picking up something also
     //peepcount = peepcount + 1;
     loadtime = millis();
     //Serial.println(peepcount);
     //delay(100);
-    
-//    if (!client.connect(host, port)) {
-// 
-//        Serial.println("Connection to host failed");
-// 
-//        delay(1000);
-//        return;
-//    }
-// 
-//    Serial.println("Connected to server successful!");
-// 
-//    client.print(peepcount);
-// 
-//    Serial.println("Disconnecting...");
-//    client.stop();
-// 
-//    delay(1000);
+  
   }
   //2. perform one iteration of the tof: returns the last time it was triggered
   if(sensor.checkForDataReady()) {
@@ -220,14 +210,14 @@ void loop() {
       if (toftime - loadtime > 1500) {
         people++; //implement wifi
         Serial.println(people);
-        Serial.println(9237594325724895);
+        setupwifi();
       }
       else {
         if(people > 0) {
           people--;
       }//implement wifi
         Serial.println(people);
-        Serial.println(9237594325724895);
+        setupwifi();
       }
       lastbothactive = bothactive;
       loadtime = 0;
@@ -242,6 +232,30 @@ void loop() {
         toftime = 0;
       }
     }
+  }
+  
+}
+
+void setupwifi() {
+  if(oldpeoplecount != people && millis()-oldwificount > 500) {
+    oldwificount = millis();
+    oldpeoplecount = people;
+      if (!client.connect(host, port)) {
+ 
+        Serial.println("Connection to host failed");
+ 
+        delay(1000);
+        return;
+    }
+ 
+    Serial.println("Connected to server successful!");
+ 
+    client.print(people);
+ 
+    Serial.println("Disconnecting...");
+    client.stop();
+ 
+    //delay(1000); 
   }
 }
 
