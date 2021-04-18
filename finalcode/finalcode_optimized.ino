@@ -124,15 +124,6 @@ void setup() {
   Serial.println("Readings:");
   /* --- */
 
-//  client.publish("esp/test", "Hello from ESP32");
-//  setUpTimer(0, count_person, 1000000);
-//  startTimer(0);
-  //load_sensor_setup();
-
-  //setUpTimer(1, setupwifi, 50000); 
-  //startTimer(1);1
-  
-
   /* SETUP TOF SENSOR */
   Wire.begin();
   Wire.setClock(400000); // use 400 kHz I2C 0x52
