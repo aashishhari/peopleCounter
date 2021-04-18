@@ -268,38 +268,11 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone) {
   int CurrentZoneStatus = NOBODY;
   int AllZonesCurrentStatus = 0;
   int AnEventHasOccured = 0;
-  
-  /* Grabs minDistance over specified nb (DISTANCES_ARRAY_SIZE) of samples respective to each zone.
-  static uint16_t Distances[2][DISTANCES_ARRAY_SIZE]; // DISTANCE_ARRAY_SIZE nb of samples
-  static uint8_t DistancesTableSize[2] = {0,0}; // keeps track of how many samples we've stored.
-  uint16_t MinDistance;
-  uint8_t i;
-
-  // Add just picked distance to the table of the corresponding zone
-  if (DistancesTableSize[zone] < DISTANCES_ARRAY_SIZE) {
-    Distances[zone][DistancesTableSize[zone]] = Distance;
-    DistancesTableSize[zone] ++;
-  }
-  else { // otherwise do a shifting thing
-    for (i=1; i<DISTANCES_ARRAY_SIZE; i++)
-      Distances[zone][i-1] = Distances[zone][i];
-    Distances[zone][DISTANCES_ARRAY_SIZE-1] = Distance;
-  }
-  // pick up the min distance
-  MinDistance = Distances[zone][0];
-  if (DistancesTableSize[zone] >= 2) {
-    for (i=1; i<DistancesTableSize[zone]; i++) {
-      if (Distances[zone][i] < MinDistance)
-        MinDistance = Distances[zone][i];
-    }
-  }
-  */
 
   if (MinDistance < DIST_THRESHOLD) {
     // Someone is in !
     CurrentZoneStatus = SOMEONE;
   }
-  
   // left zone
   if (zone == LEFT) {
     if (CurrentZoneStatus != LeftPreviousStatus) {
@@ -311,7 +284,7 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone) {
       }
       // need to check right zone as well ...
       if (RightPreviousStatus == SOMEONE) {
-        // event in left zone has occured
+        // event in right zone has occured
         AllZonesCurrentStatus += 2;
       }
       // remember for next time
@@ -320,10 +293,8 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone) {
   }
   // right zone
   else {
-    
     if (CurrentZoneStatus != RightPreviousStatus) {
-      
-      // event in left zone has occured
+      // event in right zone has occured
       AnEventHasOccured = 1;
       if (CurrentZoneStatus == SOMEONE) {
         AllZonesCurrentStatus += 2;
@@ -340,40 +311,31 @@ int ProcessPeopleCountingData(int16_t Distance, uint8_t zone) {
   // if an event has occured
   if (AnEventHasOccured) {
     if (PathTrackFillingSize < 4) {
-      PathTrackFillingSize ++;
+      PathTrackFillingSize++;
     }
     
     // if nobody anywhere lets check if an exit or entry has happened
     if ((LeftPreviousStatus == NOBODY) && (RightPreviousStatus == NOBODY)) {
-      
       // check exit or entry only if PathTrackFillingSize is 4 (for example 0 1 3 2) and last event is 0 (nobobdy anywhere)
       if (PathTrackFillingSize == 4) {
-        // check exit or entry. no need to check PathTrack[0] == 0 , it is always the case
-        
+        // check exit or entry. no need to check PathTrack[0] == 0 , it is always the case NOBODY
         if ((PathTrack[1] == 1)  && (PathTrack[2] == 3) && (PathTrack[3] == 2)) {
           // This an entry
           PeopleCount = PeopleCount + 1;
           // reset the table filling size in case an entry or exit just found
-          DistancesTableSize[0] = 0;
-          DistancesTableSize[1] = 0;
           Serial.print("Walk In, People Count=");
           Serial.println(PeopleCount);
         } else if ((PathTrack[1] == 2)  && (PathTrack[2] == 3) && (PathTrack[3] == 1)) {
           // This an exit
           PeopleCount = PeopleCount - 1;
           // reset the table filling size in case an entry or exit just found
-          DistancesTableSize[0] = 0;
-          DistancesTableSize[1] = 0;
           Serial.print("Walk Out, People Count="); 
           Serial.println(PeopleCount);
         } else {
           // reset the table filling size also in case of unexpected path
-          DistancesTableSize[0] = 0;
-          DistancesTableSize[1] = 0;
           Serial.println("Wrong path");
         }
       }
-      
       PathTrackFillingSize = 1;
     }
     else {
