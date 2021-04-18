@@ -163,14 +163,23 @@ void flip() {
   }
 }
 
+//float reading = 0;
+float prevReading = 0;
 void loop() { // ok need to walk through this code after peopleCount;
   //1. perform one iteration of the load sensor: returns the last time it was pressed down
+  // prevReading = reading;
   float reading = scale.get_units(1);
   Serial.println(reading);
   if(reading > threshold){ // maybe include a boolean check to see if the TOF is picking up something also
     //peepcount = peepcount + 1;
     loadtime = millis(); //Serial.println(peepcount); //delay(100);
   }
+
+  /* Alternate Approach (will need threshold modification)
+  if(abs(reading - prevReading) > threshold ) {
+    loadtime = millis();
+  }
+  */
   
   //2. perform one iteration of the tof: returns the last time it was triggered
   if(sensor.checkForDataReady()) {
@@ -185,14 +194,10 @@ void loop() { // ok need to walk through this code after peopleCount;
     toftime = millis();
   }
   oldCount = count;
-  //toftime = millis();
-  //delete count from the code and instead return millis during the trigger
-  //int loadtime = 0; //these two variables get initialized by the above two lines
-  //int toftime = 0;  //use millis to get these two times
 
   //do some code that determines if a person walked in or out
   if (loadtime == 0 && toftime == 0 || (millis() - lastbothactive < timeBetweenBothTrigger)) {
-    
+    // do nothing
   }
   else if (loadtime != 0 && toftime == 0) {
     lastactive = loadtime;
@@ -231,7 +236,6 @@ void loop() { // ok need to walk through this code after peopleCount;
       }
     }
   }
-  
 }
 
 // run on separate core.
