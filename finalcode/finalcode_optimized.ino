@@ -36,22 +36,22 @@ int oldCount = 0;
 
 /** Load Sensor Globals **/
 HX711 scale;
-int peepcount = 0;
+int peepcount = 0; // unused
 float threshold = 1000; // kg
-byte trials = 1;
+byte trials = 1; // unused
 /** done **/
 
 /** FINAL CODE Globals **/
-int oldwificount = 0;
-int people = 0;
+int oldwificount = 0; 
+int people = 0; 
 int oldpeoplecount = 0;
 int lastactive = 0;
 int lastbothactive = 0;
 int timeBetweenActivation = 3000;
 int timeBetweenBothTrigger = 500;
- int loadtime = 0;
- int toftime = 0;
-volatile int counter = 0;
+int loadtime = 0;
+int toftime = 0;
+volatile int counter = 0; // unused
 /** done **/
 
 void setup() {
