@@ -1,0 +1,5 @@
+Partlist exported from C:/Users/Darren's Laptop/Documents/EAGLE/projects/EECS300pcb/EECS300pcb.sch at 4/9/2021 10:44 AM
+
+Qty Value Device Package Parts                                                                      Description                                           MF MPN OC_NEWARK POPULARITY
+1   ESP32 ESP32  ESP32   U$2                                                                                                                                     unknown             
+9   LSP10 LSP10  LSP10   HX711GND, HX711VIN, LOADDT, LOADSCK, POWER, TOFGND, TOFSCL, TOFSDA, TOFVIN SOLDER PAD drill 1.0 mm, distributor Buerklin, 12H555        unknown   52        
