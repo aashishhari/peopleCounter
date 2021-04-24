@@ -6,4 +6,4 @@
  
  > `GerberFiles` contains gerber and drill files sent to JLCPCB for final PCB production.
 
- Additionally, a couple extra files and directories contain a few different implementations we were experiment with throughout the process.
+ Additionally, a couple extra files and directories contain a few different implementations we were experimenting with throughout the process.
