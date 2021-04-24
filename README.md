@@ -2,4 +2,4 @@
 
 In this repo, you'll find our final project code within the `finalDemo` folder.
 
-Additionally, a couple extra files and directories contain a few different implementations we were experiment with throughout the process.
+Additionally, a couple extra files and directories contain a few different implementations we were experimenting with throughout the process.
