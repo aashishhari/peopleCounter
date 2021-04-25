@@ -1,6 +1,6 @@
 # Welcome to Team3's Project Repo for EECS 300
 
- In this repo, you'll find our final project code within the `finalDemo` folder.  Note the requirements below.
+ __In this repo, you'll find our final project code within the `finalDemo` folder.  Note the requirements below.__
  
  > `EECS300pcb` contains all the parts of the Eagle PCB Project (schematic, pcb view, gerber, drill, etc.).
  
