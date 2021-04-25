@@ -8,11 +8,11 @@
 #include <WiFi.h>
 
 //wifi globals
-const char* ssid = "NETGEAR92";
-const char* password =  "youngtrumpet129";
+const char* ssid = ""; // ADD YOUR OWN
+const char* password =  ""; // ADD YOUR OWN
 // 
 const uint16_t port = 8090;
-const char * host = "192.168.1.15";
+const char * host = ""; // ADD YOUR OWN
 
 //ToF Globals
 static const int NOBODY = 0;
