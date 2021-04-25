@@ -11,6 +11,6 @@
  Additionally, a couple extra files and directories contain a few different implementations we were experimenting with throughout the process.
 
 
-__Required Libraries (These need to be installed to run):__
+__Required Libraries/Dependencies (These need to be installed to run):__
  1. SparkFun_VL53L1X *Version 1.2.9*
  2. Arduino Development Environment (with arduino-esp32 core from Espressif)
