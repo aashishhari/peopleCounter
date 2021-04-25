@@ -5,6 +5,7 @@
  > `EECS300pcb` contains all the parts of the Eagle PCB Project (schematic, pcb view, gerber, drill, etc.).
  
  > `GerberFiles` contains gerber and drill files sent to JLCPCB for final PCB production.
+ > `TestingData` contains the testing data referenced in our final report.
 
  Additionally, a couple extra files and directories contain a few different implementations we were experimenting with throughout the process.
 
