@@ -11,7 +11,6 @@
  > `PCB_Photos` contains an image of the final manafactured PCB and also an image of the PCB design in its layered form.
 
  Additionally, a couple extra files and directories contain a few different implementations we were experimenting with throughout the process.  
- 
  *finalcode_multicore.ino* - contains a prototype multicore version of our design.
 
 __Required Libraries/Dependencies (These need to be installed to run):__
