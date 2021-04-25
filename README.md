@@ -8,7 +8,9 @@
  
  > `TestingData` contains the testing data referenced in our final report.
 
- Additionally, a couple extra files and directories contain a few different implementations we were experimenting with throughout the process.
+ Additionally, a couple extra files and directories contain a few different implementations we were experimenting with throughout the process.  
+ 
+ PCB.jpg includes a picture of our final PCB design.
 
 
 __Required Libraries/Dependencies (These need to be installed to run):__
